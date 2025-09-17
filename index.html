@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game Dino Chrome Offline</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f7f7f7;
+            font-family: 'Arial', sans-serif;
+            overflow: hidden;
+        }
+        
+        #game-container {
+            position: relative;
+            width: 800px;
+            height: 200px;
+            overflow: hidden;
+            background-color: #fff;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+        
+        #ground {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            height: 20px;
+            background-color: #535353;
+        }
+        
+        #dino {
+            position: absolute;
+            bottom: 20px;
+            left: 50px;
+            width: 40px;
+            height: 50px;
+            background-color: #535353;
+            z-index: 2;
+        }
+        
+        .cactus {
+            position: absolute;
+            bottom: 20px;
+            width: 20px;
+            height: 40px;
+            background-color: #535353;
+        }
+        
+        #score {
+            position: absolute;
+            top: 10px;
+            right: 20px;
+            font-size: 18px;
+            color: #535353;
+            font-weight: bold;
+        }
+        
+        #game-over {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255, 255, 255, 0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            z-index: 10;
+        }
+        
+        #restart-btn {
+            margin-top: 20px;
+            padding: 10px 20px;
+            background-color: #535353;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.2s;
+        }
+        
+        #restart-btn:hover {
+            background-color: #3a3a3a;
+        }
+        
+        #instructions {
+            position: absolute;
+            bottom: 10px;
+            left: 0;
+            width: 100%;
+            text-align: center;
+            color: #888;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <div id="score">Skor: 0</div>
+        <div id="ground"></div>
+        <div id="dino"></div>
+        <div id="game-over">
+            <h2>Game Over!</h2>
+            <p id="final-score">Skor akhir: 0</p>
+            <button id="restart-btn">Main Lagi</button>
+        </div>
+        <div id="instructions">Tekan Spasi atau Tompan Atas untuk melompat</div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const dino = document.getElementById('dino');
+            const gameContainer = document.getElementById('game-container');
+            const scoreElement = document.getElementById('score');
+            const gameOverScreen = document.getElementById('game-over');
+            const finalScoreElement = document.getElementById('final-score');
+            const restartBtn = document.getElementById('restart-btn');
+            const instructions = document.getElementById('instructions');
+            
+            let isJumping = false;
+            let isGameOver = false;
+            let score = 0;
+            let gravity = 0.9;
+            let velocity = 0;
+            let position = 0;
+            let gameSpeed = 2;
+            let cactusInterval;
+            
+            // Kontrol game
+            function control(e) {
+                if (e.keyCode === 32 || e.keyCode === 38) { // Spasi atau panah atas
+                    if (!isJumping && !isGameOver) {
+                        jump();
+                    }
+                    if (isGameOver) {
+                        restartGame();
+                    }
+                }
+            }
+            
+            document.addEventListener('keydown', control);
+            restartBtn.addEventListener('click', restartGame);
+            
+            // Fungsi lompat
+            function jump() {
+                isJumping = true;
+                velocity = 15;
+                moveDino();
+            }
+            
+            // Gerakkan dino
+            function moveDino() {
+                if (!isGameOver) {
+                    position = parseInt(window.getComputedStyle(dino).getPropertyValue('bottom'));
+                    
+                    if (isJumping) {
+                        velocity -= gravity;
+                        position += velocity;
+                        
+                        if (position <= 20) {
+                            position = 20;
+                            isJumping = false;
+                            velocity = 0;
+                        }
+                        
+                        dino.style.bottom = position + 'px';
+                        
+                        if (isJumping) {
+                            requestAnimationFrame(moveDino);
+                        }
+                    }
+                }
+            }
+            
+            // Buat kaktus
+            function createCactus() {
+                if (isGameOver) return;
+                
+                const cactus = document.createElement('div');
+                cactus.classList.add('cactus');
+                gameContainer.appendChild(cactus);
+                
+                let cactusPosition = 800;
+                cactus.style.left = cactusPosition + 'px';
+                
+                // Pergerakan kaktus
+                let moveCactus = setInterval(function() {
+                    if (isGameOver) {
+                        clearInterval(moveCactus);
+                        return;
+                    }
+                    
+                    cactusPosition -= gameSpeed;
+                    cactus.style.left = cactusPosition + 'px';
+                    
+                    // Deteksi tabrakan
+                    if (cactusPosition > 0 && cactusPosition < 80 && position < 50) {
+                        gameOver();
+                        clearInterval(moveCactus);
+                    }
+                    
+                    // Hapus kaktus jika sudah lewat
+                    if (cactusPosition < -20) {
+                        clearInterval(moveCactus);
+                        gameContainer.removeChild(cactus);
+                        updateScore();
+                    }
+                }, 20);
+            }
+            
+            // Update skor
+            function updateScore() {
+                if (!isGameOver) {
+                    score += 10;
+                    scoreElement.textContent = 'Skor: ' + score;
+                    
+                    // Tingkatkan kesulitan setiap 100 poin
+                    if (score % 100 === 0) {
+                        gameSpeed += 0.5;
+                    }
+                }
+            }
+            
+            // Game over
+            function gameOver() {
+                isGameOver = true;
+                finalScoreElement.textContent = 'Skor akhir: ' + score;
+                gameOverScreen.style.display = 'flex';
+                clearInterval(cactusInterval);
+            }
+            
+            // Mulai ulang game
+            function restartGame() {
+                isGameOver = false;
+                score = 0;
+                gameSpeed = 2;
+                scoreElement.textContent = 'Skor: 0';
+                gameOverScreen.style.display = 'none';
+                
+                // Hapus semua kaktus
+                document.querySelectorAll('.cactus').forEach(cactus => {
+                    cactus.remove();
+                });
+                
+                // Reset posisi dino
+                dino.style.bottom = '20px';
+                position = 20;
+                
+                // Mulai interval kaktus baru
+                clearInterval(cactusInterval);
+                cactusInterval = setInterval(createCactus, 2000);
+            }
+            
+            // Mulai game
+            cactusInterval = setInterval(createCactus, 2000);
+            
+            // Sembunyikan instruksi setelah beberapa detik
+            setTimeout(() => {
+                instructions.style.opacity = 0;
+                setTimeout(() => {
+                    instructions.style.display = 'none';
+                }, 1000);
+            }, 5000);
+        });
+    </script>
+</body>
+</html>
